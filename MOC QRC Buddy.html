@@ -1,0 +1,119 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MOC QRC Buddy V3</title>
+    <!-- This script is for reading .docx files. It's hosted on a reliable CDN. -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f4f7f6; margin: 0; padding: 2rem; }
+        .container { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 100%; max-width: 800px; margin: auto; }
+        h1, h2 { color: #333; }
+        textarea { width: 100%; height: 200px; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 1rem; box-sizing: border-box; }
+        button, .link-button { border: none; padding: 0.8rem 1.5rem; border-radius: 4px; cursor: pointer; font-size: 1rem; margin-right: 0.5rem; text-decoration: none; display: inline-block; text-align: center; }
+        button { background-color: #007bff; color: white; }
+        button:hover { background-color: #0056b3; }
+        .link-button { background-color: #6c757d; color: white; }
+        .link-button:hover { background-color: #5a6268; }
+        #outputText { background-color: #e9ecef; }
+        #file-chosen { margin-left: 1rem; font-style: italic; color: #555; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>MOC QRC Buddy 1.03</h1>
+    
+    <h2>Step 1: Upload Word Document</h2>
+    <p>Select the Quick Response Checklist (.docx) file. The app will automatically extract the text and generate a prompt based on proven examples.</p>
+    <input type="file" id="doc-picker" accept=".docx">
+    <span id="file-chosen">No file chosen</span>
+
+    <hr style="margin: 2rem 0;">
+
+    <h2>Step 2: Copy and Paste to GenAI</h2>
+    <p>Use the buttons below to copy your generated prompt and then open GenAI.mil.</p>
+    <textarea id="outputText" readonly placeholder="The prompt with the document's text will appear here..."></textarea>
+    <button onclick="copyToClipboard()">Copy to Clipboard</button>
+    <a href="https://genai.mil" target="_blank" rel="noopener noreferrer" class="link-button">Open GenAI.mil</a>
+</div>
+
+<script>
+    document.getElementById('doc-picker').addEventListener('change', handleFileSelect, false);
+
+    function handleFileSelect(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        document.getElementById('file-chosen').textContent = file.name;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            mammoth.extractRawText({ arrayBuffer: e.target.result })
+                .then(result => generatePrompt(result.value))
+                .catch(err => {
+                    console.log(err);
+                    document.getElementById('outputText').value = "Error: Could not read the document.";
+                });
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function generatePrompt(documentText) {
+        // --- THIS IS THE NEW "FEW-SHOT" PROMPT WITH YOUR EXAMPLES ---
+        const aiPrompt = `I am a controller in the Maintenance Operations Center. My goal is to create a concise, one-paragraph summary of a Quick Response Checklist (QRC) document that will be used to brief Maintenance Group Leadership.
+
+Follow these critical rules:
+- The entire final summary MUST be in ALL CAPS.
+- The summary must be a single paragraph.
+- Always end the summary with "ALL APPROPRIATE AGENCIES HAVE BEEN NOTIFIED." unless the event is self-contained (like a found tool).
+- If the document lists specific agencies, just state "ALL APPROPRIATE AGENCIES HAVE BEEN NOTIFIED."
+- Do not mention that a checklist was initiated or completed.
+- If investigations have started or were preformed state that in the summary. 
+
+--- EXAMPLES OF PERFECT SUMMARIES ---
+
+### EXAMPLE 1: AIRCRAFT DAMAGE ###
+HYPOTHETICAL ORIGINAL TEXT: "Event reported at 0340Z. It was an aircraft mishap. A/C 60-0353 was on hardstand 17BB. They were doing a refuel op. When they opened the keel beam bay door to get the tail stand out, the door hit the fuselage skin. It tore a hole in the skin."
+PERFECT SUMMARY: AT APPROX 0340Z, THE MOC WAS NOTIFIED OF AN AIRCRAFT MISHAP. DURING REFUEL OPERATIONS FOR ACFT 60-0353 ON 17BB, THE KEEL BEAM BAY DOOR IMPACTED AIRCRAFT SKIN WHEN OPENING THE DOOR TO REMOVE THE TAIL STAND, RESULTING IN A TEAR IN THE AIRCRAFT SKIN. ALL APPROPRIATE AGENCIES HAVE BEEN NOTIFIED.
+
+### EXAMPLE 2: PERSONNEL INJURY ###
+HYPOTHETICAL ORIGINAL TEXT: "Got a call at 1420Z about an injury. An AGE member was out at HS29 delivering a -95 unit. It was raining and as he was unhooking the towbar from the pintle hook, his hand slipped because it was wet. The towbar fell and landed on his right foot. He was wearing steel toe boots. They sent him to the ER."
+PERFECT SUMMARY: AT APPROXIMATELY 1420Z, THE MOC WAS NOTIFIED OF A PERSONNEL INJURY. AGE MEMBER WAS DELIVERING A -95 TO HS29, WHEN UNHOOKING UNIT TOWBAR FROM THE TRUCK PINTLE HOOK THE TOW BAR SLIPPED OUT OF MEMBERS HAND DUE TO WET CONDITIONS AND HIT TOP OF RIGHT FOOT, THE MEMBER WAS WEARING STEEL TOW BOOTS, MEMBER WAS ESCORTED TO ER. ALL APPROPRIATE AGENCIES HAVE BEEN NOTIFIED.
+
+### EXAMPLE 3: LOST TOOL ###
+HYPOTHETICAL ORIGINAL TEXT: "Notification time: 1600Z. Subject: Lost Tool. A member from AMXS was on spot 17BB servicing engine oil on aircraft 59-1470. He was using his multi-tool, EID is ML3TCTB06. At around 1500Z, he noticed the slide retaining clip for the multi-tool was gone. A search has been started but it's not found yet."
+PERFECT SUMMARY: AT APPROX. 1600Z THE MOC WAS NOTIFIED OF A LOST TOOL. A MEMBER OF AMXS WAS RE-FILLING ENG OIL ON A/C 59-1470 ON SPOT 17BB, USING MULTI-TOOL ML3TCTB06. THE MULTI-TOOL SLIDE RETAINING CLIP WAS NOTICED MISSING AT APPROX. 1500Z. SEARCH IS ONGOING. ALL APPROPRIATE AGENCIES HAVE BEEN NOTIFIED.
+
+### EXAMPLE 4: IN-FLIGHT EMERGENCY (IFE) ###
+HYPOTHETICAL ORIGINAL TEXT: "Report of an IFE at 1745Z. It's for TA aircraft, a KC-135, tail number 63-8039. The issue is suspected fuel contamination. There are 21 POB (personnel on board)."
+PERFECT SUMMARY: AT APPROX. 1745Z THE MOC WAS NOTIFIED OF AN IFE. TA ACFT KC-135 63-8039. ACFT HAS SUSPECTED FUEL CONTAMINATION, 21 SOULS ONBOARD. ALL APPROPRIATE AGENCIES HAVE BEEN NOTIFIED.
+
+--- TASK ---
+
+Now, using the rules and EXAMPLES above, process the following document text and create a summary in the exact same style.
+
+DOCUMENT TEXT TO PROCESS:
+`;
+
+        // Combine the prompt and the extracted text
+        const combinedText = aiPrompt + '\\n' + documentText;
+        
+        document.getElementById('outputText').value = combinedText;
+    }
+
+    function copyToClipboard() {
+        const outputField = document.getElementById('outputText');
+        if (outputField.value) {
+            navigator.clipboard.writeText(outputField.value)
+                .then(() => alert('Prompt copied to clipboard!'))
+                .catch(err => {
+                    console.error('Failed to copy text: ', err);
+                    alert('Could not copy text. Please do it manually.');
+                });
+        } else {
+            alert('Nothing to copy. Please upload a document first.');
+        }
+    }
+</script>
+
+</body>
+</html>
