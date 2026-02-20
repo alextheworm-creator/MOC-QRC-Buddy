@@ -2,7 +2,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MOC QRC Buddy V3</title>
+    <title>MOC QRC Buddy V1.03</title>
     <!-- This script is for reading .docx files. It's hosted on a reliable CDN. -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <style>
@@ -22,9 +22,9 @@
 <body>
 
 <div class="container">
-    <h1>MOC QRC Buddy 1.03</h1>
+    <h1>MOC QRC Buddy V1.03</h1>
     
-    <h2>Step 1: Upload Word Document</h2>
+    <h2>Step 1: Upload The QRC! (in .docx format)</h2>
     <p>Select the Quick Response Checklist (.docx) file. The app will automatically extract the text and generate a prompt based on proven examples.</p>
     <input type="file" id="doc-picker" accept=".docx">
     <span id="file-chosen">No file chosen</span>
@@ -59,9 +59,9 @@
 
     function generatePrompt(documentText) {
         // --- THIS IS THE NEW "FEW-SHOT" PROMPT WITH EXSAMPLES FROM PREIVIOUS CONTROLLERS  ---
-        const aiPrompt = `I am a controller in the Maintenance Operations Center. My goal is to create a concise, one-paragraph summary of a Quick Response Checklist (QRC) document that will be used to brief Maintenance Group Leadership.
+        const aiPrompt = `I am a controller in the Maintenance Operations Center. My goal is to create a concise, one-paragraph summary of a Quick Response Checklist (QRC) document that will be used to brief Maintenance Group Leadership, I also need to generate an email with the summary.
 
-Follow these critical rules:
+Follow these critical rules for Summary:
 - The entire final summary MUST be in ALL CAPS.
 - The summary must be a single paragraph.
 - Always end the summary with "ALL APPROPRIATE AGENCIES HAVE BEEN NOTIFIED." unless the event is self-contained (like a found tool).
@@ -86,6 +86,39 @@ PERFECT SUMMARY: AT APPROX. 1600Z THE MOC WAS NOTIFIED OF A LOST TOOL. A MEMBER 
 ### EXAMPLE 4: IN-FLIGHT EMERGENCY (IFE) ###
 HYPOTHETICAL ORIGINAL TEXT: "Report of an IFE at 1745Z. It's for TA aircraft, a KC-135, tail number 63-8039. The issue is suspected fuel contamination. There are 21 POB (personnel on board)."
 PERFECT SUMMARY: AT APPROX. 1745Z THE MOC WAS NOTIFIED OF AN IFE. TA ACFT KC-135 63-8039. ACFT HAS SUSPECTED FUEL CONTAMINATION, 21 SOULS ONBOARD. ALL APPROPRIATE AGENCIES HAVE BEEN NOTIFIED.
+
+Follow these Critical rules for the E-Mail
+- Must Start With AlCON, 
+- Must adhear to basic email formating
+- Must adhear to the same rules for the summary
+- Must end with the signature block of
+    V/R,
+    100th Maintenance Operations
+    RAF Mildenhall, United Kingdom
+    DSN: 238-7300
+    COMM: +44 1638 547300
+ 
+--- EXSAMPLE OF EMAILS---
+
+### EXSAMPLE 1: Lost Tool
+ALCON,
+ 
+The 100th MOC has been informed of a missing object, the details are as follows:
+ 
+Date/Time of Notification: 16 FEB 2026 1910Z
+Description of Object: Pin from B-7 stand lower handrail
+CTK NUMBER: N/A
+Location: 15CC
+Name shop/squadron who lost: 100 AMXS/APG
+FOUND: The search is still ongoing
+Lost Tool Control Number: 856
+Search Start: 16 FEB 2026, 1700Z
+ 
+ 
+If you have any questions, please contact the MOC.
+
+
+### EXSAMPLE 2:
 
 --- TASK ---
 
@@ -116,4 +149,5 @@ DOCUMENT TEXT TO PROCESS:
 </script>
 
 </body>
+
 </html>
