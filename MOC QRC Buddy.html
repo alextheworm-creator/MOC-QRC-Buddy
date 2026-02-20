@@ -3,9 +3,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MOC QRC Buddy V1.1</title>
-    <!-- This script is for reading .docx files. It's hosted on a reliable CDN. -->
+    <!-- Library for reading .docx files -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
-    <!--libary for reading .pdf files. -->
+    <!-- Library for reading .pdf files -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f4f7f6; margin: 0; padding: 2rem; }
@@ -24,11 +24,11 @@
 <body>
 
 <div class="container">
-    <h1>MOC QRC Buddy V1.1</h1>
+    <h1>MOC QRC Buddy V1.04</h1>
     
     <h2>Step 1: Upload The QRC! (in .docx or .pdf format)</h2>
-    <p>Select the Quick Response Checklist (.docx or .pdf) file. The app will automatically extract the text and generate a prompt based on proven examples.</p>
-    <input type="file" id="doc-picker" accept=".docx">
+    <p>Select the Quick Response Checklist file. The app will automatically extract the text and generate a prompt based on proven examples.</p>
+    <input type="file" id="doc-picker" accept=".docx,.pdf">
     <span id="file-chosen">No file chosen</span>
 
     <hr style="margin: 2rem 0;">
@@ -41,28 +41,69 @@
 </div>
 
 <script>
+    // Set the workerSrc for pdf.js
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.worker.min.js';
+
     document.getElementById('doc-picker').addEventListener('change', handleFileSelect, false);
 
     function handleFileSelect(event) {
         const file = event.target.files[0];
         if (!file) return;
+
         document.getElementById('file-chosen').textContent = file.name;
         const reader = new FileReader();
+
         reader.onload = function(e) {
-            mammoth.extractRawText({ arrayBuffer: e.target.result })
-                .then(result => generatePrompt(result.value))
-                .catch(err => {
-                    console.log(err);
-                    document.getElementById('outputText').value = "Error: Could not read the document.";
-                });
+            const fileExtension = file.name.split('.').pop().toLowerCase();
+            const arrayBuffer = e.target.result;
+
+            if (fileExtension === 'docx') {
+                handleDocx(arrayBuffer);
+            } else if (fileExtension === 'pdf') {
+                handlePdf(arrayBuffer);
+            } else {
+                document.getElementById('outputText').value = "Error: Unsupported file type.";
+            }
         };
         reader.readAsArrayBuffer(file);
     }
 
-    function generatePrompt(documentText) {
-        // --- THIS IS THE NEW "FEW-SHOT" PROMPT WITH EXSAMPLES FROM PREIVIOUS CONTROLLERS  ---
-        const aiPrompt = `I am a controller in the Maintenance Operations Center. My goal is to create a concise, one-paragraph summary of a Quick Response Checklist (QRC) document that will be used to brief Maintenance Group Leadership, I also need to generate an email with the summary.
+    function handleDocx(arrayBuffer) {
+        mammoth.extractRawText({ arrayBuffer: arrayBuffer })
+            .then(result => generatePrompt(result.value))
+            .catch(err => {
+                console.error("Mammoth error:", err);
+                document.getElementById('outputText').value = "Error: Could not read the .docx document.";
+            });
+    }
 
+    function handlePdf(arrayBuffer) {
+        pdfjsLib.getDocument({ data: arrayBuffer }).promise.then(pdf => {
+            let fullText = '';
+            const numPages = pdf.numPages;
+            let pagesProcessed = 0;
+
+            for (let i = 1; i <= numPages; i++) {
+                pdf.getPage(i).then(page => {
+                    page.getTextContent().then(textContent => {
+                        const pageText = textContent.items.map(item => item.str).join(' ');
+                        fullText += pageText + '\n\n';
+                        pagesProcessed++;
+
+                        if (pagesProcessed === numPages) {
+                            generatePrompt(fullText);
+                        }
+                    });
+                });
+            }
+        }).catch(err => {
+            console.error("PDF.js error:", err);
+            document.getElementById('outputText').value = "Error: Could not read the .pdf document.";
+        });
+    }
+
+    function generatePrompt(documentText) {
+        const aiPrompt = `I am a controller in the Maintenance Operations Center. My goal is to create a concise, one-paragraph summary of a Quick Response Checklist (QRC) document that will be used to brief Maintenance Group Leadership, I also need to generate an email with the summary.
 Follow these critical rules for Summary:
 - The entire final summary MUST be in ALL CAPS.
 - The summary must be a single paragraph.
@@ -71,27 +112,20 @@ Follow these critical rules for Summary:
 - Do not mention that a checklist was initiated or completed.
 - Do not include a list of actions that need to be preformed as it is fluff and not needed. 
 - Do not say all call, Instead refre to them as a "Mass Notification"
-
 - If investigations have started or were preformed state that in the summary. 
-
 --- EXAMPLES OF PERFECT SUMMARIES ---
-
 ### EXAMPLE 1: AIRCRAFT DAMAGE ###
 HYPOTHETICAL ORIGINAL TEXT: "Event reported at 0340Z. It was an aircraft mishap. A/C 60-0353 was on hardstand 17BB. They were doing a refuel op. When they opened the keel beam bay door to get the tail stand out, the door hit the fuselage skin. It tore a hole in the skin."
 PERFECT SUMMARY: AT APPROX 0340Z, THE MOC WAS NOTIFIED OF AN AIRCRAFT MISHAP. DURING REFUEL OPERATIONS FOR ACFT 60-0353 ON 17BB, THE KEEL BEAM BAY DOOR IMPACTED AIRCRAFT SKIN WHEN OPENING THE DOOR TO REMOVE THE TAIL STAND, RESULTING IN A TEAR IN THE AIRCRAFT SKIN. ALL APPROPRIATE AGENCIES HAVE BEEN NOTIFIED.
-
 ### EXAMPLE 2: PERSONNEL INJURY ###
 HYPOTHETICAL ORIGINAL TEXT: "Got a call at 1420Z about an injury. An AGE member was out at HS29 delivering a -95 unit. It was raining and as he was unhooking the towbar from the pintle hook, his hand slipped because it was wet. The towbar fell and landed on his right foot. He was wearing steel toe boots. They sent him to the ER."
 PERFECT SUMMARY: AT APPROXIMATELY 1420Z, THE MOC WAS NOTIFIED OF A PERSONNEL INJURY. AGE MEMBER WAS DELIVERING A -95 TO HS29, WHEN UNHOOKING UNIT TOWBAR FROM THE TRUCK PINTLE HOOK THE TOW BAR SLIPPED OUT OF MEMBERS HAND DUE TO WET CONDITIONS AND HIT TOP OF RIGHT FOOT, THE MEMBER WAS WEARING STEEL TOW BOOTS, MEMBER WAS ESCORTED TO ER. ALL APPROPRIATE AGENCIES HAVE BEEN NOTIFIED.
-
 ### EXAMPLE 3: LOST TOOL ###
 HYPOTHETICAL ORIGINAL TEXT: "Notification time: 1600Z. Subject: Lost Tool. A member from AMXS was on spot 17BB servicing engine oil on aircraft 59-1470. He was using his multi-tool, EID is ML3TCTB06. At around 1500Z, he noticed the slide retaining clip for the multi-tool was gone. A search has been started but it's not found yet."
 PERFECT SUMMARY: AT APPROX. 1600Z THE MOC WAS NOTIFIED OF A LOST TOOL. A MEMBER OF AMXS WAS RE-FILLING ENG OIL ON A/C 59-1470 ON SPOT 17BB, USING MULTI-TOOL ML3TCTB06. THE MULTI-TOOL SLIDE RETAINING CLIP WAS NOTICED MISSING AT APPROX. 1500Z. SEARCH IS ONGOING. ALL APPROPRIATE AGENCIES HAVE BEEN NOTIFIED.
-
 ### EXAMPLE 4: IN-FLIGHT EMERGENCY (IFE) ###
 HYPOTHETICAL ORIGINAL TEXT: "Report of an IFE at 1745Z. It's for TA aircraft, a KC-135, tail number 63-8039. The issue is suspected fuel contamination. There are 21 POB (personnel on board)."
 PERFECT SUMMARY: AT APPROX. 1745Z THE MOC WAS NOTIFIED OF AN IFE. TA ACFT KC-135 63-8039. ACFT HAS SUSPECTED FUEL CONTAMINATION, 21 SOULS ONBOARD. ALL APPROPRIATE AGENCIES HAVE BEEN NOTIFIED.
-
 Follow these Critical rules for the E-Mail
 - Must Start With AlCON, 
 - Must adhear to basic email formating
@@ -105,12 +139,9 @@ Follow these Critical rules for the E-Mail
     COMM: +44 1638 547300
  
 --- EXSAMPLE OF EMAILS---
-
 ### EXSAMPLE 1: Lost Tool
 ALCON,
- 
 The 100th MOC has been informed of a missing object, the details are as follows:
- 
 Date/Time of Notification: 16 FEB 2026 1910Z
 Description of Object: Pin from B-7 stand lower handrail
 CTK NUMBER: N/A
@@ -120,22 +151,13 @@ FOUND: The search is still ongoing
 Lost Tool Control Number: 856
 Search Start: 16 FEB 2026, 1700Z
  
- 
 If you have any questions, please contact the MOC.
-
-
 ### EXSAMPLE 2:
-
 --- TASK ---
-
 Now, using the rules and EXAMPLES above, process the following document text and create a summary in the exact same style.
-
 DOCUMENT TEXT TO PROCESS:
 `;
-
-        // Combine the prompt and the extracted text
-        const combinedText = aiPrompt + '\\n' + documentText;
-        
+        const combinedText = aiPrompt + '\n' + documentText;
         document.getElementById('outputText').value = combinedText;
     }
 
@@ -155,7 +177,4 @@ DOCUMENT TEXT TO PROCESS:
 </script>
 
 </body>
-
 </html>
-
-
