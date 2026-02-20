@@ -2,9 +2,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MOC QRC Buddy V1.03</title>
+    <title>MOC QRC Buddy V1.1</title>
     <!-- This script is for reading .docx files. It's hosted on a reliable CDN. -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <!--libary for reading .pdf files. -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f4f7f6; margin: 0; padding: 2rem; }
         .container { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 100%; max-width: 800px; margin: auto; }
@@ -22,10 +24,10 @@
 <body>
 
 <div class="container">
-    <h1>MOC QRC Buddy V1.03</h1>
+    <h1>MOC QRC Buddy V1.1</h1>
     
-    <h2>Step 1: Upload The QRC! (in .docx format)</h2>
-    <p>Select the Quick Response Checklist (.docx) file. The app will automatically extract the text and generate a prompt based on proven examples.</p>
+    <h2>Step 1: Upload The QRC! (in .docx or .pdf format)</h2>
+    <p>Select the Quick Response Checklist (.docx or .pdf) file. The app will automatically extract the text and generate a prompt based on proven examples.</p>
     <input type="file" id="doc-picker" accept=".docx">
     <span id="file-chosen">No file chosen</span>
 
@@ -155,4 +157,5 @@ DOCUMENT TEXT TO PROCESS:
 </body>
 
 </html>
+
 
